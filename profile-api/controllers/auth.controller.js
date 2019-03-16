@@ -1,22 +1,68 @@
 const createError = require('http-errors');
 const User = require('../models/user.model');
+const passport = require('passport');
+const LocalStrategy = require('passport-local').Strategy;
 
 module.exports.register = (req, res, next) => {
-  throw createError(501, 'Not Implemented')
+  const { email, password, campus, course } = req.body;
+  User.findOne({ email: email })
+    .then(user => {
+      if (user) {
+        throw createError(409, 'User already registered')
+      } else {
+        return new User(req.body).save();
+      }
+    })
+    .then(user => res.status(201).json(user))
+    .catch(next);
 }
 
 module.exports.authenticate = (req, res, next) => {
-  throw createError(501, 'Not Implemented')
+  passport.authenticate('local-auth', (error, user, message) => {
+    if (error) {
+      next(error)
+    } else if (!user) {
+      throw createError(401, message);
+    } else {
+      req.login(user, (error) => {
+        if (error) {
+          next(error)
+        } else {
+          res.status(201).json(user);
+        }
+      })
+    }
+  }) (req, res, next);
+}
+
+module.exports.getUser = (req, res, next) => {
+  User.findById(req.user.id)
+    .then(user => {
+      if(!user){
+        throw createError(404, 'user not found')
+      } else {
+        res.json(user)
+      }
+    })
+    .catch(next)
+}
+
+module.exports.updateUser = (req, res, next) => {
+  delete req.body.email;
+
+  const user = req.user;
+  console.log(req.body);
+  Object.keys(req.body).forEach(prop => user[prop] = req.body[prop]);
+  if (req.file) user.avatarURL = req.file.secure_url;
+
+  user.save()
+    .then(user => res.status(202).json(user))
+    .catch(next)
 }
 
 module.exports.logout = (req, res, next) => {
-  throw createError(501, 'Not Implemented')
+  req.logout();
+  res.status(204).json();
 }
 
-module.exports.getProfile = (req, res, next) => {
-  throw createError(501, 'Not Implemented')
-}
 
-module.exports.editProfile = (req, res, next) => {
-  throw createError(501, 'Not Implemented')
-}
